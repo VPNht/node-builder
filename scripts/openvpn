@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-var fs = require('fs');
+var fs = require('fs-plus');
 var mv = require('mv');
 var zlib = require('zlib');
 var path = require('path');
@@ -15,9 +15,17 @@ temp.track();
 
 // OpenVPN Download Link
 var config = {
-	win: {
-		x86: '',
-		x64: '',
+	win32: {
+		x86: 'https://github.com/VPNht/node-builder/releases/download/openvpn/openvpn-windows-x86.exe',
+		x64: 'https://github.com/VPNht/node-builder/releases/download/openvpn/openvpn-windows-x64.exe',
+	},
+	darwin: {
+		x86: 'https://github.com/VPNht/node-builder/releases/download/openvpn/openvpn-mac.tar.gz',
+		x64: 'https://github.com/VPNht/node-builder/releases/download/openvpn/openvpn-windows-x64.exe',
+	},
+	linux: {
+		x86: 'https://github.com/VPNht/node-builder/releases/download/openvpn/openvpn-linux-x86.tar.gz',
+		x64: 'https://github.com/VPNht/node-builder/releases/download/openvpn/openvpn-linux-x64.tar.gz',
 	}
 }
 
@@ -46,11 +54,8 @@ var downloadTarballAndExtract = function (url, location, callback) {
 	});
 };
 
-var copyToLocation = function (callback, version, targetFilename, fromDirectory) {
-	var arch = process.arch === 'ia32' ? 'x86' : process.arch;
-	var subDir = "node-" + version + "-" + process.platform + "-" + arch;
-	var fromPath = path.join(fromDirectory, subDir, 'bin', 'node');
-	return mv(fromPath, targetFilename, function (err) {
+var copyToLocation = function (callback, targetFilename, fromDirectory) {
+	return mv(fromDirectory, targetFilename, function (err) {
 		if (err) {
 			callback(err);
 			return;
@@ -59,16 +64,22 @@ var copyToLocation = function (callback, version, targetFilename, fromDirectory)
 	});
 };
 
-var downloadOpenVPN = function (version, done) {
+var downloadOpenVPN = function (done) {
 	var arch, downloadURL, filename;
 	arch = process.arch === 'ia32' ? 'x86' : process.arch;
 
+	// we clean our download folder
+	fs.removeSync(path.resolve(__dirname, '..', 'openvpn'));
+
+	downloadURL = config[process.platform][arch];
+
 	if (process.platform === 'win32') {
-		downloadURL = "http://nodejs.org/dist/" + version + "/" + arch + "node.exe";
-		filename = path.join('bin', "openvpn.exe");
+		// if windows we need our dir so we'll create it
+		fs.makeTreeSync(path.resolve(__dirname, '..','openvpn'));
+		filename = path.join('openvpn', "openvpn.exe");
 	} else {
-		downloadURL = "http://nodejs.org/dist/" + version + "/node-" + version + "-" + process.platform + "-" + arch + ".tar.gz";
-		filename = path.join('bin', "openvpn");
+		// we tell him to extract in openvpn folder
+		filename = path.join('openvpn');
 	}
 
 	var downloadFile = function () {
@@ -76,10 +87,10 @@ var downloadOpenVPN = function (version, done) {
 		if (process.platform === 'win32') {
 			downloadFileToLocation(downloadURL, filename, done);
 		} else if (process.platform === 'linux') {
-			var next = copyToLocation.bind(this, done, version, filename);
+			var next = copyToLocation.bind(this, done, filename);
 			downloadTarballAndExtract(downloadURL, filename, next);
 		} else {
-			var next = copyToLocation.bind(this, done, version, filename);
+			var next = copyToLocation.bind(this, done, filename);
 			downloadTarballAndExtract(downloadURL, filename, next);
 		}
 	};
@@ -87,9 +98,9 @@ var downloadOpenVPN = function (version, done) {
 	downloadFile();
 };
 
-downloadOpenVPN('v0.10.33', function (error) {
+downloadOpenVPN(function (error) {
 	if (error != null) {
-		console.error('Failed to download node', error);
+		console.error('Failed to download openvpn', error);
 		return process.exit(1);
 	} else {
 		return process.exit(0);
