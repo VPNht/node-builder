@@ -4,14 +4,17 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "install": "node ./scripts/openvpn.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
     "fs-plus": "^2.4.0",
+    "fstream": "^1.0.3",
     "mv": "^2.0.3",
     "request": "^2.51.0",
+    "runas": "^1.0.1",
     "tar": "^1.0.3",
     "temp": "^0.8.1"
   }
