@@ -11,6 +11,7 @@ request = require('../lib/request');
 
 var tar = require('tar');
 var temp = require('temp');
+var archiver = require('archiver');
 
 temp.track();
 
@@ -103,19 +104,30 @@ var createTarOpenVpn = function (done) {
 	var arch = process.arch === 'ia32' ? 'x86' : process.arch;
 	var platform = process.platform === 'darwin' ? 'mac' : process.platform;
 
-	var dirDest = fs.createWriteStream('build/openvpn-' + platform + '-' + arch + '.tar');
+	var dirDest = fs.createWriteStream('build/openvpn-' + platform + '-' + arch + '.tar.gz');
 
 	// we'll copy our openvpn.conf
 	fs.createReadStream('openvpn.conf').pipe(fs.createWriteStream('openvpn/openvpn.conf'));
 
-	var packer = tar.Pack({ noProprietary: true })
-	  .on('error', onError)
-	  .on('end', done);
+	var tarArchive = archiver('tar', {
+	  gzip: true,
+	  gzipOptions: {
+	    level: 1
+	  }
+	});
 
-	fstream.Reader({ path: path.resolve(__dirname, '..', 'openvpn'), type: "Directory" })
-	  .on('error', onError)
-	  .pipe(packer)
-	  .pipe(dirDest)
+	dirDest.on('close', function() {
+	    console.log('done with the tar', 'build/openvpn-' + platform + '-' + arch + '.tar.gz');
+		done();
+	});
+
+	tarArchive.pipe(dirDest);
+
+	tarArchive.bulk([
+	    { src: [ '**/*' ], cwd: path.resolve(__dirname, '..', 'openvpn'), expand: true }
+	]);
+
+	tarArchive.finalize()
 }
 
 var createTarRunAs = function (done) {
@@ -123,20 +135,27 @@ var createTarRunAs = function (done) {
 	var arch = process.arch === 'ia32' ? 'x86' : process.arch;
 	var platform = process.platform === 'darwin' ? 'mac' : process.platform;
 
-	var dirDest = fs.createWriteStream('build/runas-' + platform + '-' + arch + '.tar');
+	var dirDest = fs.createWriteStream('build/runas-' + platform + '-' + arch + '.tar.gz');
 
-	var packer = tar.Pack({ noProprietary: true })
-	  .on('error', onError)
-	  .on('end', done);
+	var tarArchive = archiver('tar', {
+	  gzip: true,
+	  gzipOptions: {
+	    level: 1
+	  }
+	});
 
-	fstream.Reader({ path: path.resolve(__dirname, '..', 'node_modules', 'runas'), type: "Directory" })
-	  .on('error', onError)
-	  .pipe(packer)
-	  .pipe(dirDest)
-}
+	dirDest.on('close', function() {
+	    console.log('done with the tar', 'build/runas-' + platform + '-' + arch + '.tar.gz');
+		done();
+	});
 
-var onError = function (err) {
-  console.error('An error occurred:', err)
+	tarArchive.pipe(dirDest);
+
+	tarArchive.bulk([
+	    { src: [ '**/*' ], cwd: path.resolve(__dirname, '..', 'node_modules', 'runas'), expand: true }
+	]);
+
+	tarArchive.finalize()
 }
 
 downloadOpenVPN(function (error) {
