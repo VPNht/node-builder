@@ -97,7 +97,13 @@ var downloadOpenVPN = function (done) {
 
 var createTarOpenVpn = function (done) {
 
-	var dirDest = fs.createWriteStream('build/openvpn.tar');
+	fs.removeSync('build');
+	fs.makeTreeSync('build');
+
+	var arch = process.arch === 'ia32' ? 'x86' : process.arch;
+	var platform = process.platform === 'darwin' ? 'mac' : process.platform;
+
+	var dirDest = fs.createWriteStream('build/openvpn-' + platform + '-' + arch + '.tar');
 
 	// we'll copy our openvpn.conf
 	fs.createReadStream('openvpn.conf').pipe(fs.createWriteStream('openvpn/openvpn.conf'));
@@ -114,7 +120,10 @@ var createTarOpenVpn = function (done) {
 
 var createTarRunAs = function (done) {
 
-	var dirDest = fs.createWriteStream('build/runas.tar');
+	var arch = process.arch === 'ia32' ? 'x86' : process.arch;
+	var platform = process.platform === 'darwin' ? 'mac' : process.platform;
+
+	var dirDest = fs.createWriteStream('build/runas-' + platform + '-' + arch + '.tar');
 
 	var packer = tar.Pack({ noProprietary: true })
 	  .on('error', onError)
@@ -141,10 +150,9 @@ downloadOpenVPN(function (error) {
 				console.error('Failed to generate final build', error);
 				return process.exit(1);
 			} else {
-				// create our runas tar
 				createTarRunAs(function(error) {
 					if (error != null) {
-						console.error('Failed to generate final build', error);
+						console.error('Failed to generate runas build', error);
 						return process.exit(1);
 					} else {
 						return process.exit(0);
